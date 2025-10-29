@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io"
 	"io/fs"
+	"net"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -275,7 +276,7 @@ func downloads(router *httprouter.Router, baseDir string, fsys fs.FS) {
 	})
 }
 
-func Serve(ctx context.Context, artifactPath string, addr string, port string) context.CancelFunc {
+func Serve(ctx context.Context, artifactPath string, addr string, port string, network string) context.CancelFunc {
 	serverContext, cancel := context.WithCancel(ctx)
 	logger := common.Logger(serverContext)
 
@@ -291,8 +292,12 @@ func Serve(ctx context.Context, artifactPath string, addr string, port string) c
 	downloads(router, artifactPath, fsys)
 	RoutesV4(router, artifactPath, fsys, fsys)
 
+	listener, err := net.Listen(network, fmt.Sprintf("%s:%s", addr, port))
+	if err != nil {
+		logger.Fatal(err)
+	}
+
 	server := &http.Server{
-		Addr:              fmt.Sprintf("%s:%s", addr, port),
 		ReadHeaderTimeout: 2 * time.Second,
 		Handler:           router,
 	}
@@ -300,7 +305,7 @@ func Serve(ctx context.Context, artifactPath string, addr string, port string) c
 	// run server
 	go func() {
 		logger.Infof("Start server on http://%s:%s", addr, port)
-		if err := server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+		if err := server.Serve(listener); err != nil && err != http.ErrServerClosed {
 			logger.Fatal(err)
 		}
 	}()
