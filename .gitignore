@@ -32,3 +32,8 @@ unit-tests.xml
 
 # megalinter
 report/
+
+# local
+.direnv/
+.envrc
+pkg/runner/testdata/cache/
