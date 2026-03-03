@@ -65,6 +65,10 @@ type Input struct {
 	validate                           bool
 	strict                             bool
 	concurrentJobs                     int
+	envVar                             []string
+	envSecret                          []string
+	envVarfile                         []string
+	envSecretfile                      []string
 }
 
 func (i *Input) resolve(path string) string {
