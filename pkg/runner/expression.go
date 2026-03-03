@@ -567,9 +567,11 @@ func setupWorkflowInputs(ctx context.Context, inputs *map[string]interface{}, rc
 }
 
 func getWorkflowSecrets(ctx context.Context, rc *RunContext) map[string]string {
+	var secrets map[string]string
+	
 	if rc.caller != nil {
 		job := rc.caller.runContext.Run.Job()
-		secrets := job.Secrets()
+		secrets = job.Secrets()
 
 		if secrets == nil && job.InheritSecrets() {
 			secrets = rc.caller.runContext.Config.Secrets
@@ -582,13 +584,51 @@ func getWorkflowSecrets(ctx context.Context, rc *RunContext) map[string]string {
 		for k, v := range secrets {
 			secrets[k] = rc.caller.runContext.ExprEval.Interpolate(ctx, v)
 		}
-
-		return secrets
+	} else {
+		secrets = make(map[string]string)
+		
+		// Start with repository-level secrets
+		for k, v := range rc.Config.Secrets {
+			secrets[k] = v
+		}
+	}
+	
+	// Apply environment-specific secrets if environment is specified
+	if rc.Run != nil && rc.Run.Job() != nil {
+		jobEnv := rc.Run.Job().GetEnvironment()
+		if jobEnv != nil && rc.Config.Environments != nil {
+			envConfig := rc.Config.Environments[jobEnv.Name]
+			if envConfig != nil {
+				for k, v := range envConfig.Secrets {
+					secrets[k] = v
+				}
+			}
+		}
 	}
 
-	return rc.Config.Secrets
+	return secrets
 }
 
 func getWorkflowVars(_ context.Context, rc *RunContext) map[string]string {
-	return rc.Config.Vars
+	vars := make(map[string]string)
+	
+	// Start with repository-level vars
+	for k, v := range rc.Config.Vars {
+		vars[k] = v
+	}
+	
+	// Apply environment-specific vars if environment is specified
+	if rc.Run != nil && rc.Run.Job() != nil {
+		jobEnv := rc.Run.Job().GetEnvironment()
+		if jobEnv != nil && rc.Config.Environments != nil {
+			envConfig := rc.Config.Environments[jobEnv.Name]
+			if envConfig != nil {
+				for k, v := range envConfig.Vars {
+					vars[k] = v
+				}
+			}
+		}
+	}
+	
+	return vars
 }
