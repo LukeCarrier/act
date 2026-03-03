@@ -140,7 +140,7 @@ This document outlines the tasks required to implement GitHub Actions Environmen
 **Plan Reference:** 2.3
 **Status:** ✅ COMPLETED
 
-### Task 2.5: Add CLI Flags to `cmd/root.go`
+### Task 2.5: Add CLI Flags to `cmd/root.go` ✅
 
 **Description:** Add the new CLI flags (`--environment-var`, `--environment-var-file`, `--environment-secret`, `--environment-secret-file`) to `cmd/root.go`.
 
@@ -158,7 +158,7 @@ This document outlines the tasks required to implement GitHub Actions Environmen
 **Spec Reference:** FR4, Implementation Details (CLI Integration)
 **Plan Reference:** 2.4
 
-### Task 2.6: Implement `processEnvironmentFlags` in `cmd/root.go`
+### Task 2.6: Implement `processEnvironmentFlags` in `cmd/root.go` ✅
 
 **Description:** Implement `processEnvironmentFlags` to parse the new CLI flags and populate `config.Environments`.
 
@@ -177,6 +177,7 @@ This document outlines the tasks required to implement GitHub Actions Environmen
 **Effort:** Medium (1.5 days)
 **Spec Reference:** FR2, FR4, Implementation Details (CLI Integration)
 **Plan Reference:** 2.4
+**Status:** ✅ COMPLETED
 
 ## Phase 3: Context Integration
 

@@ -371,3 +371,223 @@ func TestRewriteSubExpressionForceFormat(t *testing.T) {
 		})
 	}
 }
+
+func TestGetWorkflowVars_WithEnvironment(t *testing.T) {
+	ctx := context.Background()
+
+	// Test case 1: No environment specified
+	t.Run("no environment", func(t *testing.T) {
+		rc := &RunContext{
+			Config: &Config{
+				Vars: map[string]string{
+					"REPO_VAR": "repo_value",
+				},
+			},
+			Run: &model.Run{
+				JobID: "job1",
+				Workflow: &model.Workflow{
+					Jobs: map[string]*model.Job{
+						"job1": {},
+					},
+				},
+			},
+		}
+
+		vars := getWorkflowVars(ctx, rc)
+		assert.Equal(t, "repo_value", vars["REPO_VAR"])
+		assert.Len(t, vars, 1)
+	})
+
+	// Test case 2: Environment specified with vars
+	t.Run("environment with vars", func(t *testing.T) {
+		rc := &RunContext{
+			Config: &Config{
+				Vars: map[string]string{
+					"REPO_VAR": "repo_value",
+				},
+				Environments: map[string]*EnvironmentConfig{
+					"production": {
+						Vars: map[string]string{
+							"ENV_VAR": "env_value",
+						},
+					},
+				},
+			},
+			Run: &model.Run{
+				JobID: "job1",
+				Workflow: &model.Workflow{
+					Jobs: map[string]*model.Job{
+						"job1": {
+							RawEnvironment: createEnvironmentNode(t, "production"),
+						},
+					},
+				},
+			},
+		}
+
+		vars := getWorkflowVars(ctx, rc)
+		assert.Equal(t, "repo_value", vars["REPO_VAR"])
+		assert.Equal(t, "env_value", vars["ENV_VAR"])
+		assert.Len(t, vars, 2)
+	})
+
+	// Test case 3: Environment vars override repository vars
+	t.Run("environment vars override repo vars", func(t *testing.T) {
+		rc := &RunContext{
+			Config: &Config{
+				Vars: map[string]string{
+					"SHARED_VAR": "repo_value",
+				},
+				Environments: map[string]*EnvironmentConfig{
+					"production": {
+						Vars: map[string]string{
+							"SHARED_VAR": "env_value",
+						},
+					},
+				},
+			},
+			Run: &model.Run{
+				JobID: "job1",
+				Workflow: &model.Workflow{
+					Jobs: map[string]*model.Job{
+						"job1": {
+							RawEnvironment: createEnvironmentNode(t, "production"),
+						},
+					},
+				},
+			},
+		}
+
+		vars := getWorkflowVars(ctx, rc)
+		assert.Equal(t, "env_value", vars["SHARED_VAR"])
+		assert.Len(t, vars, 1)
+	})
+
+	// Test case 4: Environment name normalization
+	t.Run("environment name case normalization", func(t *testing.T) {
+		rc := &RunContext{
+			Config: &Config{
+				Vars: map[string]string{},
+				Environments: map[string]*EnvironmentConfig{
+					"production": {
+						Vars: map[string]string{
+							"ENV_VAR": "env_value",
+						},
+					},
+				},
+			},
+			Run: &model.Run{
+				JobID: "job1",
+				Workflow: &model.Workflow{
+					Jobs: map[string]*model.Job{
+						"job1": {
+							RawEnvironment: createEnvironmentNode(t, "Production"),
+						},
+					},
+				},
+			},
+		}
+
+		vars := getWorkflowVars(ctx, rc)
+		assert.Equal(t, "env_value", vars["ENV_VAR"])
+	})
+}
+
+func TestGetWorkflowSecrets_WithEnvironment(t *testing.T) {
+	ctx := context.Background()
+
+	// Test case 1: No environment specified
+	t.Run("no environment", func(t *testing.T) {
+		rc := &RunContext{
+			Config: &Config{
+				Secrets: map[string]string{
+					"REPO_SECRET": "repo_secret_value",
+				},
+			},
+			Run: &model.Run{
+				JobID: "job1",
+				Workflow: &model.Workflow{
+					Jobs: map[string]*model.Job{
+						"job1": {},
+					},
+				},
+			},
+		}
+
+		secrets := getWorkflowSecrets(ctx, rc)
+		assert.Equal(t, "repo_secret_value", secrets["REPO_SECRET"])
+		assert.Len(t, secrets, 1)
+	})
+
+	// Test case 2: Environment specified with secrets
+	t.Run("environment with secrets", func(t *testing.T) {
+		rc := &RunContext{
+			Config: &Config{
+				Secrets: map[string]string{
+					"REPO_SECRET": "repo_secret_value",
+				},
+				Environments: map[string]*EnvironmentConfig{
+					"production": {
+						Secrets: map[string]string{
+							"ENV_SECRET": "env_secret_value",
+						},
+					},
+				},
+			},
+			Run: &model.Run{
+				JobID: "job1",
+				Workflow: &model.Workflow{
+					Jobs: map[string]*model.Job{
+						"job1": {
+							RawEnvironment: createEnvironmentNode(t, "production"),
+						},
+					},
+				},
+			},
+		}
+
+		secrets := getWorkflowSecrets(ctx, rc)
+		assert.Equal(t, "repo_secret_value", secrets["REPO_SECRET"])
+		assert.Equal(t, "env_secret_value", secrets["ENV_SECRET"])
+		assert.Len(t, secrets, 2)
+	})
+
+	// Test case 3: Environment secrets override repository secrets
+	t.Run("environment secrets override repo secrets", func(t *testing.T) {
+		rc := &RunContext{
+			Config: &Config{
+				Secrets: map[string]string{
+					"SHARED_SECRET": "repo_secret_value",
+				},
+				Environments: map[string]*EnvironmentConfig{
+					"production": {
+						Secrets: map[string]string{
+							"SHARED_SECRET": "env_secret_value",
+						},
+					},
+				},
+			},
+			Run: &model.Run{
+				JobID: "job1",
+				Workflow: &model.Workflow{
+					Jobs: map[string]*model.Job{
+						"job1": {
+							RawEnvironment: createEnvironmentNode(t, "production"),
+						},
+					},
+				},
+			},
+		}
+
+		secrets := getWorkflowSecrets(ctx, rc)
+		assert.Equal(t, "env_secret_value", secrets["SHARED_SECRET"])
+		assert.Len(t, secrets, 1)
+	})
+}
+
+func createEnvironmentNode(t *testing.T, envName string) yaml.Node {
+	var node yaml.Node
+	err := node.Encode(envName)
+	assert.NoError(t, err)
+	return node
+}
