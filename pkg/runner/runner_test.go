@@ -189,11 +189,13 @@ func (j *TestJobFileInfo) runTest(ctx context.Context, t *testing.T, cfg *Config
 		ReuseContainers:       false,
 		Env:                   cfg.Env,
 		Secrets:               cfg.Secrets,
+		Vars:                  cfg.Vars,
 		Inputs:                cfg.Inputs,
 		GitHubInstance:        "github.com",
 		ContainerArchitecture: cfg.ContainerArchitecture,
 		Matrix:                cfg.Matrix,
 		ActionCache:           cfg.ActionCache,
+		Environments:          cfg.Environments,
 	}
 
 	runner, err := New(runnerConfig)
@@ -924,4 +926,95 @@ func createEnvironmentNodeForTest(t *testing.T, envName string) yaml.Node {
 	err := node.Encode(envName)
 	assert.NoError(t, err)
 	return node
+}
+
+func TestRunEnvironmentVars(t *testing.T) {
+	if testing.Short() {
+		t.Skip("skipping integration test")
+	}
+
+	ctx := context.Background()
+
+	tables := []TestJobFileInfo{
+		{workdir: "testdata", workflowPath: "environment-vars", eventName: "push"},
+	}
+
+	for _, table := range tables {
+		t.Run(table.workflowPath, func(t *testing.T) {
+			table.runTest(ctx, t, &Config{
+				Vars: map[string]string{
+					"REPO_VAR":   "repo_value",
+					"SHARED_VAR": "repo_value",
+				},
+				Environments: map[string]*EnvironmentConfig{
+					"production": {
+						Vars: map[string]string{
+							"ENV_VAR":    "env_value",
+							"SHARED_VAR": "env_override",
+						},
+					},
+				},
+			})
+		})
+	}
+}
+
+func TestRunEnvironmentSecrets(t *testing.T) {
+	if testing.Short() {
+		t.Skip("skipping integration test")
+	}
+
+	ctx := context.Background()
+
+	tables := []TestJobFileInfo{
+		{workdir: "testdata", workflowPath: "environment-secrets", eventName: "push"},
+	}
+
+	for _, table := range tables {
+		t.Run(table.workflowPath, func(t *testing.T) {
+			table.runTest(ctx, t, &Config{
+				Secrets: map[string]string{
+					"REPO_SECRET":   "repo_secret_value",
+					"SHARED_SECRET": "repo_secret_value",
+				},
+				Environments: map[string]*EnvironmentConfig{
+					"production": {
+						Secrets: map[string]string{
+							"ENV_SECRET":    "env_secret_value",
+							"SHARED_SECRET": "env_secret_override",
+						},
+					},
+				},
+			})
+		})
+	}
+}
+
+func TestRunEnvironmentObject(t *testing.T) {
+	if testing.Short() {
+		t.Skip("skipping integration test")
+	}
+
+	ctx := context.Background()
+
+	tables := []TestJobFileInfo{
+		{workdir: "testdata", workflowPath: "environment-object", eventName: "push"},
+	}
+
+	for _, table := range tables {
+		t.Run(table.workflowPath, func(t *testing.T) {
+			table.runTest(ctx, t, &Config{
+				Environments: map[string]*EnvironmentConfig{
+					"staging": {
+						Vars: map[string]string{
+							"STAGING_VAR": "staging_value",
+						},
+						Secrets: map[string]string{
+							"STAGING_SECRET": "staging_secret_value",
+						},
+					},
+				},
+			})
+		})
+	}
 }

@@ -1,0 +1,24 @@
+name: Test Environment Object Format
+on: push
+
+jobs:
+  test-env-object:
+    runs-on: ubuntu-latest
+    environment:
+      name: staging
+      url: https://staging.example.com
+    steps:
+      - name: Check environment var
+        run: |
+          echo "STAGING_VAR=${{ vars.STAGING_VAR }}"
+          if [ "${{ vars.STAGING_VAR }}" != "staging_value" ]; then
+            echo "Expected STAGING_VAR=staging_value"
+            exit 1
+          fi
+      
+      - name: Check environment secret
+        run: |
+          if [ "${{ secrets.STAGING_SECRET }}" != "staging_secret_value" ]; then
+            echo "Expected STAGING_SECRET=staging_secret_value"
+            exit 1
+          fi
