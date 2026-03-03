@@ -192,6 +192,12 @@ func (w *Workflow) WorkflowCallConfig() *WorkflowCall {
 	return &config
 }
 
+// JobEnvironment is the environment configuration for a job
+type JobEnvironment struct {
+	Name string
+	URL  string
+}
+
 // Job is the structure of one job in a workflow
 type Job struct {
 	Name           string                    `yaml:"name"`
@@ -209,6 +215,7 @@ type Job struct {
 	Uses           string                    `yaml:"uses"`
 	With           map[string]interface{}    `yaml:"with"`
 	RawSecrets     yaml.Node                 `yaml:"secrets"`
+	RawEnvironment yaml.Node                 `yaml:"environment"`
 	Result         string
 }
 
@@ -382,6 +389,38 @@ func environment(yml yaml.Node) map[string]string {
 // Environment returns string-based key=value map for a job
 func (j *Job) Environment() map[string]string {
 	return environment(j.Env)
+}
+
+// GetEnvironment parses the RawEnvironment field and returns a JobEnvironment
+func (j *Job) GetEnvironment() *JobEnvironment {
+	if j.RawEnvironment.Kind == 0 {
+		return nil
+	}
+
+	switch j.RawEnvironment.Kind {
+	case yaml.ScalarNode:
+		var name string
+		if !decodeNode(j.RawEnvironment, &name) {
+			return nil
+		}
+		return &JobEnvironment{
+			Name: strings.ToLower(name),
+			URL:  "",
+		}
+	case yaml.MappingNode:
+		var val struct {
+			Name string `yaml:"name"`
+			URL  string `yaml:"url"`
+		}
+		if !decodeNode(j.RawEnvironment, &val) {
+			return nil
+		}
+		return &JobEnvironment{
+			Name: strings.ToLower(val.Name),
+			URL:  val.URL,
+		}
+	}
+	return nil
 }
 
 // Matrix decodes RawMatrix YAML node
