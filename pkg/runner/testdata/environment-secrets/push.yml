@@ -1,0 +1,45 @@
+name: Test Environment Secrets
+on: push
+
+jobs:
+  test-env-secrets:
+    runs-on: ubuntu-latest
+    environment: production
+    steps:
+      - name: Check repository secret
+        run: |
+          if [ "${{ secrets.REPO_SECRET }}" != "repo_secret_value" ]; then
+            echo "Expected REPO_SECRET=repo_secret_value"
+            exit 1
+          fi
+      
+      - name: Check environment secret
+        run: |
+          if [ "${{ secrets.ENV_SECRET }}" != "env_secret_value" ]; then
+            echo "Expected ENV_SECRET=env_secret_value"
+            exit 1
+          fi
+      
+      - name: Check environment secret overrides repo secret
+        run: |
+          if [ "${{ secrets.SHARED_SECRET }}" != "env_secret_override" ]; then
+            echo "Expected SHARED_SECRET=env_secret_override (environment should override repo)"
+            exit 1
+          fi
+
+  test-no-env:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check repository secret only
+        run: |
+          if [ "${{ secrets.REPO_SECRET }}" != "repo_secret_value" ]; then
+            echo "Expected REPO_SECRET=repo_secret_value"
+            exit 1
+          fi
+      
+      - name: Check no environment secret
+        run: |
+          if [ "${{ secrets.ENV_SECRET }}" != "" ]; then
+            echo "Expected ENV_SECRET to be empty (no environment specified)"
+            exit 1
+          fi

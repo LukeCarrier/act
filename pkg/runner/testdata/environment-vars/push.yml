@@ -1,0 +1,50 @@
+name: Test Environment Variables
+on: push
+
+jobs:
+  test-env-vars:
+    runs-on: ubuntu-latest
+    environment: production
+    steps:
+      - name: Check repository var
+        run: |
+          echo "REPO_VAR=${{ vars.REPO_VAR }}"
+          if [ "${{ vars.REPO_VAR }}" != "repo_value" ]; then
+            echo "Expected REPO_VAR=repo_value"
+            exit 1
+          fi
+      
+      - name: Check environment var
+        run: |
+          echo "ENV_VAR=${{ vars.ENV_VAR }}"
+          if [ "${{ vars.ENV_VAR }}" != "env_value" ]; then
+            echo "Expected ENV_VAR=env_value"
+            exit 1
+          fi
+      
+      - name: Check environment var overrides repo var
+        run: |
+          echo "SHARED_VAR=${{ vars.SHARED_VAR }}"
+          if [ "${{ vars.SHARED_VAR }}" != "env_override" ]; then
+            echo "Expected SHARED_VAR=env_override (environment should override repo)"
+            exit 1
+          fi
+
+  test-no-env:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check repository var only
+        run: |
+          echo "REPO_VAR=${{ vars.REPO_VAR }}"
+          if [ "${{ vars.REPO_VAR }}" != "repo_value" ]; then
+            echo "Expected REPO_VAR=repo_value"
+            exit 1
+          fi
+      
+      - name: Check no environment var
+        run: |
+          echo "ENV_VAR=${{ vars.ENV_VAR }}"
+          if [ "${{ vars.ENV_VAR }}" != "" ]; then
+            echo "Expected ENV_VAR to be empty (no environment specified)"
+            exit 1
+          fi
