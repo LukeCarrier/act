@@ -209,8 +209,9 @@ The external interface of `getWorkflowVars()` (signature) will remain unchanged;
 **Effort:** Medium (1 day)
 **Spec Reference:** FR3, FR5, Implementation Details (Context Integration), Edge Cases (Missing Environment Configuration, Duplicate Keys)
 **Plan Reference:** 2.5
+**Status:** ✅ COMPLETED
 
-### Task 3.2: Modify `getWorkflowSecrets()` in `pkg/runner/expression.go`
+### Task 3.2: Modify `getWorkflowSecrets()` in `pkg/runner/expression.go` ✅
 
 **Description:** Update `getWorkflowSecrets()` in `pkg/runner/expression.go` to retrieve environment-specific secrets from `Config.Environments` and merge them with repository-level secrets, ensuring environment precedence.
 
@@ -236,6 +237,7 @@ The external interface of `getWorkflowSecrets()` (signature) will remain unchang
 **Effort:** Medium (1 day)
 **Spec Reference:** FR3, FR5, Implementation Details (Context Integration), Edge Cases (Missing Environment Configuration, Duplicate Keys)
 **Plan Reference:** 2.5
+**Status:** ✅ COMPLETED
 
 ### Task 3.3: Implement Secret Masking in `pkg/runner/run_context.go`
 
