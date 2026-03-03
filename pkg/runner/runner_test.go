@@ -805,3 +805,123 @@ func TestRunMatrixWithUserDefinedInclusions(t *testing.T) {
 
 	tjfi.runTest(context.Background(), t, &Config{Matrix: matrix})
 }
+
+func TestNewRunContext_EnvironmentSecretMasking(t *testing.T) {
+	ctx := context.Background()
+
+	// Test case 1: Environment secrets are added to masks
+	t.Run("environment secrets are masked", func(t *testing.T) {
+		workflow := &model.Workflow{
+			Jobs: map[string]*model.Job{
+				"job1": {
+					RawEnvironment: createEnvironmentNodeForTest(t, "production"),
+				},
+			},
+		}
+
+		run := &model.Run{
+			JobID:    "job1",
+			Workflow: workflow,
+		}
+
+		config := &Config{
+			InsecureSecrets: false,
+			Secrets: map[string]string{
+				"REPO_SECRET": "repo_value",
+			},
+			Environments: map[string]*EnvironmentConfig{
+				"production": {
+					Secrets: map[string]string{
+						"ENV_SECRET": "env_value",
+					},
+				},
+			},
+		}
+
+		runner := &runnerImpl{
+			config: config,
+		}
+
+		rc := runner.newRunContext(ctx, run, nil)
+
+		// Verify environment secret is added to masks
+		assert.Contains(t, rc.Masks, "env_value")
+	})
+
+	// Test case 2: Insecure secrets are not masked
+	t.Run("insecure secrets are not masked", func(t *testing.T) {
+		workflow := &model.Workflow{
+			Jobs: map[string]*model.Job{
+				"job1": {
+					RawEnvironment: createEnvironmentNodeForTest(t, "production"),
+				},
+			},
+		}
+
+		run := &model.Run{
+			JobID:    "job1",
+			Workflow: workflow,
+		}
+
+		config := &Config{
+			InsecureSecrets: true,
+			Environments: map[string]*EnvironmentConfig{
+				"production": {
+					Secrets: map[string]string{
+						"ENV_SECRET": "env_value",
+					},
+				},
+			},
+		}
+
+		runner := &runnerImpl{
+			config: config,
+		}
+
+		rc := runner.newRunContext(ctx, run, nil)
+
+		// Verify environment secret is NOT added to masks when insecure
+		assert.NotContains(t, rc.Masks, "env_value")
+	})
+
+	// Test case 3: No environment specified
+	t.Run("no environment specified", func(t *testing.T) {
+		workflow := &model.Workflow{
+			Jobs: map[string]*model.Job{
+				"job1": {},
+			},
+		}
+
+		run := &model.Run{
+			JobID:    "job1",
+			Workflow: workflow,
+		}
+
+		config := &Config{
+			InsecureSecrets: false,
+			Environments: map[string]*EnvironmentConfig{
+				"production": {
+					Secrets: map[string]string{
+						"ENV_SECRET": "env_value",
+					},
+				},
+			},
+		}
+
+		runner := &runnerImpl{
+			config: config,
+		}
+
+		rc := runner.newRunContext(ctx, run, nil)
+
+		// Verify no environment secrets are added to masks
+		assert.NotContains(t, rc.Masks, "env_value")
+	})
+}
+
+func createEnvironmentNodeForTest(t *testing.T, envName string) yaml.Node {
+	var node yaml.Node
+	err := node.Encode(envName)
+	assert.NoError(t, err)
+	return node
+}
