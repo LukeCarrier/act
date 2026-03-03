@@ -601,10 +601,6 @@ func getWorkflowSecrets(ctx context.Context, rc *RunContext) map[string]string {
 			if envConfig != nil {
 				for k, v := range envConfig.Secrets {
 					secrets[k] = v
-					// Add environment-specific secrets to masks
-					if !rc.Config.InsecureSecrets {
-						rc.AddMask(v)
-					}
 				}
 			}
 		}
