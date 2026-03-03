@@ -12,7 +12,7 @@ This document outlines the tasks required to implement GitHub Actions Environmen
 
 ## Phase 1: Data Model and Workflow Parsing
 
-### Task 1.1: Extend `Job` struct in `pkg/model/workflow.go`
+### Task 1.1: Extend `Job` struct in `pkg/model/workflow.go` ✅
 
 **Description:** Add `RawEnvironment yaml.Node` field to the `Job` struct to capture the raw YAML for the `environment` key.
 
@@ -28,8 +28,9 @@ This document outlines the tasks required to implement GitHub Actions Environmen
 **Effort:** Low (0.5 days)
 **Spec Reference:** FR1, Implementation Details (Data Structures)
 **Plan Reference:** 2.1
+**Status:** ✅ COMPLETED
 
-### Task 1.2: Implement `JobEnvironment` struct and `Environment()` method
+### Task 1.2: Implement `JobEnvironment` struct and `Environment()` method ✅
 
 **Description:** Create `JobEnvironment` struct and implement the `Environment()` method on the `Job` struct to parse `RawEnvironment` into `JobEnvironment`, handling both string and object formats, and normalizing the environment name to lowercase.
 
@@ -52,6 +53,7 @@ This document outlines the tasks required to implement GitHub Actions Environmen
 **Effort:** Medium (1 day)
 **Spec Reference:** FR1, FR6, Implementation Details (Data Structures)
 **Plan Reference:** 2.1
+**Status:** ✅ COMPLETED
 
 ## Phase 2: CLI Flag Parsing and Configuration Loading
 
@@ -256,7 +258,7 @@ The external interface of `getWorkflowSecrets()` (signature) will remain unchang
 
 ## Phase 4: Testing
 
-### Task 4.1: Create Unit Tests for `pkg/model/workflow.go`
+### Task 4.1: Create Unit Tests for `pkg/model/workflow.go` ✅
 
 **Description:** Write unit tests for `Job` struct and `Environment()` method.
 
@@ -267,6 +269,7 @@ The external interface of `getWorkflowSecrets()` (signature) will remain unchang
 **Effort:** Low (0.5 days)
 **Spec Reference:** Testing Strategy (Unit Tests)
 **Plan Reference:** 4 (Unit Tests)
+**Status:** ✅ COMPLETED
 
 ### Task 4.2: Create Unit Tests for `pkg/runner/environment_config.go`
 

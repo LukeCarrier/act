@@ -560,3 +560,170 @@ jobs:
 	_, err := ReadWorkflow(strings.NewReader(yaml), true)
 	assert.Error(t, err, "read workflow should succeed")
 }
+
+func TestReadWorkflow_AnchorStrict(t *testing.T) {
+	yaml := `
+on: push
+
+jobs:
+  test:
+    runs-on: &runner ubuntu-latest
+    steps:
+    - uses: &checkout actions/checkout@v5
+  test2:
+    runs-on: *runner
+    steps:
+    - uses: *checkout
+`
+
+	w, err := ReadWorkflow(strings.NewReader(yaml), true)
+	assert.NoError(t, err, "read workflow should succeed")
+
+	for _, job := range w.Jobs {
+		assert.Equal(t, []string{"ubuntu-latest"}, job.RunsOn())
+		assert.Equal(t, "actions/checkout@v5", job.Steps[0].Uses)
+	}
+}
+
+func TestReadWorkflow_Anchor(t *testing.T) {
+	yaml := `
+
+jobs:
+  test:
+    runs-on: &runner ubuntu-latest
+    steps:
+    - uses: &checkout actions/checkout@v5
+  test2: &job
+    runs-on: *runner
+    steps:
+    - uses: *checkout
+    - run: echo $TRIGGER
+      env:
+        TRIGGER: &trigger push
+  test3: *job
+on: push #*trigger
+`
+
+	w, err := ReadWorkflow(strings.NewReader(yaml), false)
+	assert.NoError(t, err, "read workflow should succeed")
+
+	for _, job := range w.Jobs {
+		assert.Equal(t, []string{"ubuntu-latest"}, job.RunsOn())
+		assert.Equal(t, "actions/checkout@v5", job.Steps[0].Uses)
+	}
+}
+
+func TestReadWorkflow_Environment_String(t *testing.T) {
+	yaml := `
+name: test-environment
+on: push
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    environment: production
+    steps:
+      - run: echo "test"
+`
+
+	workflow, err := ReadWorkflow(strings.NewReader(yaml), false)
+	assert.NoError(t, err, "read workflow should succeed")
+
+	job := workflow.Jobs["test"]
+	env := job.GetEnvironment()
+	assert.NotNil(t, env)
+	assert.Equal(t, "production", env.Name)
+	assert.Equal(t, "", env.URL)
+}
+
+func TestReadWorkflow_Environment_Object(t *testing.T) {
+	yaml := `
+name: test-environment
+on: push
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    environment:
+      name: production
+      url: https://example.com
+    steps:
+      - run: echo "test"
+`
+
+	workflow, err := ReadWorkflow(strings.NewReader(yaml), false)
+	assert.NoError(t, err, "read workflow should succeed")
+
+	job := workflow.Jobs["test"]
+	env := job.GetEnvironment()
+	assert.NotNil(t, env)
+	assert.Equal(t, "production", env.Name)
+	assert.Equal(t, "https://example.com", env.URL)
+}
+
+func TestReadWorkflow_Environment_Missing(t *testing.T) {
+	yaml := `
+name: test-environment
+on: push
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo "test"
+`
+
+	workflow, err := ReadWorkflow(strings.NewReader(yaml), false)
+	assert.NoError(t, err, "read workflow should succeed")
+
+	job := workflow.Jobs["test"]
+	env := job.GetEnvironment()
+	assert.Nil(t, env)
+}
+
+func TestReadWorkflow_Environment_CaseNormalization(t *testing.T) {
+	yaml := `
+name: test-environment
+on: push
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    environment: Production
+    steps:
+      - run: echo "test"
+`
+
+	workflow, err := ReadWorkflow(strings.NewReader(yaml), false)
+	assert.NoError(t, err, "read workflow should succeed")
+
+	job := workflow.Jobs["test"]
+	env := job.GetEnvironment()
+	assert.NotNil(t, env)
+	assert.Equal(t, "production", env.Name)
+}
+
+func TestReadWorkflow_Environment_ObjectCaseNormalization(t *testing.T) {
+	yaml := `
+name: test-environment
+on: push
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    environment:
+      name: Staging
+      url: https://staging.example.com
+    steps:
+      - run: echo "test"
+`
+
+	workflow, err := ReadWorkflow(strings.NewReader(yaml), false)
+	assert.NoError(t, err, "read workflow should succeed")
+
+	job := workflow.Jobs["test"]
+	env := job.GetEnvironment()
+	assert.NotNil(t, env)
+	assert.Equal(t, "staging", env.Name)
+	assert.Equal(t, "https://staging.example.com", env.URL)
+}
