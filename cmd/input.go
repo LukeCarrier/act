@@ -67,6 +67,10 @@ type Input struct {
 	concurrentJobs                     int
 	artifactServerNetwork              string
 	cacheServerNetwork                 string
+	envVar                             []string
+	envSecret                          []string
+	envVarfile                         []string
+	envSecretfile                      []string
 }
 
 func (i *Input) resolve(path string) string {

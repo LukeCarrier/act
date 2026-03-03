@@ -218,3 +218,166 @@ func TestValidateNetworkStack(t *testing.T) {
 		})
 	}
 }
+
+func TestParseEnvironmentFlag(t *testing.T) {
+	tests := []struct {
+		name        string
+		flag        string
+		wantEnv     string
+		wantValue   string
+		wantErr     bool
+		errContains string
+	}{
+		{
+			name:      "valid flag",
+			flag:      "production:KEY=VALUE",
+			wantEnv:   "production",
+			wantValue: "KEY=VALUE",
+			wantErr:   false,
+		},
+		{
+			name:      "case normalization",
+			flag:      "Production:KEY=VALUE",
+			wantEnv:   "production",
+			wantValue: "KEY=VALUE",
+			wantErr:   false,
+		},
+		{
+			name:      "mixed case normalization",
+			flag:      "STAGING:KEY=VALUE",
+			wantEnv:   "staging",
+			wantValue: "KEY=VALUE",
+			wantErr:   false,
+		},
+		{
+			name:        "missing colon",
+			flag:        "productionKEY=VALUE",
+			wantErr:     true,
+			errContains: "invalid environment flag format",
+		},
+		{
+			name:        "empty environment name",
+			flag:        ":KEY=VALUE",
+			wantErr:     true,
+			errContains: "environment name cannot be empty",
+		},
+		{
+			name:        "empty value",
+			flag:        "production:",
+			wantErr:     true,
+			errContains: "value cannot be empty",
+		},
+		{
+			name:        "environment name too long",
+			flag:        string(make([]byte, 256)) + ":KEY=VALUE",
+			wantErr:     true,
+			errContains: "exceeds 255 characters",
+		},
+		{
+			name:      "value with colon",
+			flag:      "production:KEY=VALUE:WITH:COLONS",
+			wantEnv:   "production",
+			wantValue: "KEY=VALUE:WITH:COLONS",
+			wantErr:   false,
+		},
+		{
+			name:      "whitespace trimming",
+			flag:      "  production  :  KEY=VALUE  ",
+			wantEnv:   "production",
+			wantValue: "KEY=VALUE",
+			wantErr:   false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			env, value, err := parseEnvironmentFlag(tt.flag)
+			if tt.wantErr {
+				assert.Error(t, err)
+				if tt.errContains != "" {
+					assert.Contains(t, err.Error(), tt.errContains)
+				}
+			} else {
+				assert.NoError(t, err)
+				assert.Equal(t, tt.wantEnv, env)
+				assert.Equal(t, tt.wantValue, value)
+			}
+		})
+	}
+}
+
+func TestParseKeyValue(t *testing.T) {
+	tests := []struct {
+		name        string
+		kv          string
+		wantKey     string
+		wantValue   string
+		wantErr     bool
+		errContains string
+	}{
+		{
+			name:      "valid key-value",
+			kv:        "KEY=VALUE",
+			wantKey:   "KEY",
+			wantValue: "VALUE",
+			wantErr:   false,
+		},
+		{
+			name:      "value with equals",
+			kv:        "KEY=VALUE=WITH=EQUALS",
+			wantKey:   "KEY",
+			wantValue: "VALUE=WITH=EQUALS",
+			wantErr:   false,
+		},
+		{
+			name:      "empty value",
+			kv:        "KEY=",
+			wantKey:   "KEY",
+			wantValue: "",
+			wantErr:   false,
+		},
+		{
+			name:        "missing equals",
+			kv:          "KEYVALUE",
+			wantErr:     true,
+			errContains: "invalid key=value format",
+		},
+		{
+			name:        "empty key",
+			kv:          "=VALUE",
+			wantErr:     true,
+			errContains: "key cannot be empty",
+		},
+		{
+			name:      "whitespace in key trimmed",
+			kv:        "  KEY  =VALUE",
+			wantKey:   "KEY",
+			wantValue: "VALUE",
+			wantErr:   false,
+		},
+		{
+			name:      "whitespace in value preserved",
+			kv:        "KEY=  VALUE  ",
+			wantKey:   "KEY",
+			wantValue: "  VALUE  ",
+			wantErr:   false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			key, value, err := parseKeyValue(tt.kv)
+			if tt.wantErr {
+				assert.Error(t, err)
+				if tt.errContains != "" {
+					assert.Contains(t, err.Error(), tt.errContains)
+				}
+			} else {
+				assert.NoError(t, err)
+				assert.Equal(t, tt.wantKey, key)
+				assert.Equal(t, tt.wantValue, value)
+			}
+		})
+	}
+}
+>>>>>>> conflict 1 of 1 ends
