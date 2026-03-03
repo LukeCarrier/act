@@ -62,6 +62,13 @@ type Config struct {
 	ContainerNetworkMode               docker_container.NetworkMode // the network mode of job containers (the value of --network)
 	ActionCache                        ActionCache                  // Use a custom ActionCache Implementation
 	ConcurrentJobs                     int                          // Number of max concurrent jobs
+	Environments                       map[string]*EnvironmentConfig // environment-specific configuration
+}
+
+// EnvironmentConfig contains environment-specific variables and secrets
+type EnvironmentConfig struct {
+	Vars    map[string]string // environment-specific variables
+	Secrets map[string]string // environment-specific secrets
 }
 
 func (config *Config) GetConcurrentJobs() int {

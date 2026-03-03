@@ -57,7 +57,7 @@ This document outlines the tasks required to implement GitHub Actions Environmen
 
 ## Phase 2: CLI Flag Parsing and Configuration Loading
 
-### Task 2.1: Define `Config` and `EnvironmentConfig` structs
+### Task 2.1: Define `Config` and `EnvironmentConfig` structs ✅
 
 **Description:** Add `Environments map[string]*EnvironmentConfig` to the `Config` struct in `pkg/runner/runner.go` and define the `EnvironmentConfig` struct.
 
@@ -72,8 +72,9 @@ This document outlines the tasks required to implement GitHub Actions Environmen
 **Effort:** Low (0.5 days)
 **Spec Reference:** Implementation Details (Data Structures)
 **Plan Reference:** 2.2
+**Status:** ✅ COMPLETED
 
-### Task 2.2: Create `pkg/runner/environment_config.go` and `ParseEnvironmentFlag`
+### Task 2.2: Create `pkg/runner/environment_config.go` and `ParseEnvironmentFlag` ✅
 
 **Description:** Create a new file `pkg/runner/environment_config.go` and implement `ParseEnvironmentFlag` to parse CLI flags in `environment:value` format, including environment name normalization and validation.
 
@@ -95,8 +96,9 @@ This document outlines the tasks required to implement GitHub Actions Environmen
 **Effort:** Medium (1 day)
 **Spec Reference:** FR4, FR6, Implementation Details (Configuration Loading)
 **Plan Reference:** 2.3
+**Status:** ✅ COMPLETED
 
-### Task 2.3: Implement `ParseKeyValue`
+### Task 2.3: Implement `ParseKeyValue` ✅
 
 **Description:** Implement `ParseKeyValue` in `pkg/runner/environment_config.go` to parse `KEY=VALUE` strings.
 
@@ -113,8 +115,9 @@ This document outlines the tasks required to implement GitHub Actions Environmen
 **Effort:** Low (0.5 days)
 **Spec Reference:** Implementation Details (Configuration Loading)
 **Plan Reference:** 2.3
+**Status:** ✅ COMPLETED
 
-### Task 2.4: Implement `LoadEnvironmentVarsFromFile` and `LoadEnvironmentSecretsFromFile`
+### Task 2.4: Implement `LoadEnvironmentVarsFromFile` and `LoadEnvironmentSecretsFromFile` ✅
 
 **Description:** Implement `LoadEnvironmentVarsFromFile` and `LoadEnvironmentSecretsFromFile` in `pkg/runner/environment_config.go` to load variables/secrets from files, reusing Act's existing file loading logic.
 
@@ -135,6 +138,7 @@ This document outlines the tasks required to implement GitHub Actions Environmen
 **Effort:** Medium (1 day)
 **Spec Reference:** FR2, Implementation Details (Configuration Loading)
 **Plan Reference:** 2.3
+**Status:** ✅ COMPLETED
 
 ### Task 2.5: Add CLI Flags to `cmd/root.go`
 
@@ -271,7 +275,7 @@ The external interface of `getWorkflowSecrets()` (signature) will remain unchang
 **Plan Reference:** 4 (Unit Tests)
 **Status:** ✅ COMPLETED
 
-### Task 4.2: Create Unit Tests for `pkg/runner/environment_config.go`
+### Task 4.2: Create Unit Tests for `pkg/runner/environment_config.go` ✅
 
 **Description:** Write unit tests for `ParseEnvironmentFlag`, `ParseKeyValue`, `LoadEnvironmentVarsFromFile`, and `LoadEnvironmentSecretsFromFile`.
 
@@ -282,6 +286,7 @@ The external interface of `getWorkflowSecrets()` (signature) will remain unchang
 **Effort:** Medium (1 day)
 **Spec Reference:** Testing Strategy (Unit Tests)
 **Plan Reference:** 4 (Unit Tests)
+**Status:** ✅ COMPLETED
 
 ### Task 4.3: Create Unit Tests for `pkg/runner/expression.go`
 

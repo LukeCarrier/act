@@ -79,6 +79,10 @@ func createRootCommand(ctx context.Context, input *Input, version string) *cobra
 	rootCmd.Flags().StringArrayVar(&input.vars, "var", []string{}, "variable to make available to actions with optional value (e.g. --var myvar=foo or --var myvar)")
 	rootCmd.Flags().StringArrayVarP(&input.envs, "env", "", []string{}, "env to make available to actions with optional value (e.g. --env myenv=foo or --env myenv)")
 	rootCmd.Flags().StringArrayVarP(&input.inputs, "input", "", []string{}, "action input to make available to actions (e.g. --input myinput=foo)")
+	rootCmd.Flags().StringArrayVar(&input.envVar, "environment-var", []string{}, "variable scoped to a specific environment (e.g. --environment-var production:KEY=value)")
+	rootCmd.Flags().StringArrayVar(&input.envSecret, "environment-secret", []string{}, "secret scoped to a specific environment (e.g. --environment-secret production:KEY=value)")
+	rootCmd.Flags().StringArrayVar(&input.envVarfile, "environment-var-file", []string{}, "file with variables scoped to a specific environment (e.g. --environment-var-file production:.vars.production)")
+	rootCmd.Flags().StringArrayVar(&input.envSecretfile, "environment-secret-file", []string{}, "file with secrets scoped to a specific environment (e.g. --environment-secret-file production:.secrets.production)")
 	rootCmd.Flags().StringArrayVarP(&input.platforms, "platform", "P", []string{}, "custom image to use per platform (e.g. -P ubuntu-18.04=nektos/act-environments-ubuntu:18.04)")
 	rootCmd.Flags().BoolVarP(&input.reuseContainers, "reuse", "r", false, "don't remove container(s) on successfully completed workflow(s) to maintain state between runs")
 	rootCmd.Flags().BoolVarP(&input.bindWorkdir, "bind", "b", false, "bind working directory to container, rather than copy")
@@ -387,6 +391,115 @@ func parseMatrix(matrix []string) map[string]map[string]bool {
 	return matrixes
 }
 
+func parseEnvironmentFlag(flag string) (envName, value string, err error) {
+	parts := strings.SplitN(flag, ":", 2)
+	if len(parts) != 2 {
+		return "", "", fmt.Errorf("invalid environment flag format: %s (expected format: environment:value)", flag)
+	}
+
+	envName = strings.TrimSpace(parts[0])
+	value = strings.TrimSpace(parts[1])
+
+	if envName == "" {
+		return "", "", fmt.Errorf("environment name cannot be empty in flag: %s", flag)
+	}
+
+	if value == "" {
+		return "", "", fmt.Errorf("value cannot be empty in flag: %s", flag)
+	}
+
+	if len(envName) > 255 {
+		return "", "", fmt.Errorf("environment name exceeds 255 characters: %s", envName)
+	}
+
+	envName = strings.ToLower(envName)
+
+	return envName, value, nil
+}
+
+func parseKeyValue(kv string) (key, value string, err error) {
+	parts := strings.SplitN(kv, "=", 2)
+	if len(parts) != 2 {
+		return "", "", fmt.Errorf("invalid key=value format: %s", kv)
+	}
+
+	key = strings.TrimSpace(parts[0])
+	value = parts[1]
+
+	if key == "" {
+		return "", "", fmt.Errorf("key cannot be empty in: %s", kv)
+	}
+
+	return key, value, nil
+}
+
+func processEnvironmentFlags(input *Input) (map[string]*runner.EnvironmentConfig, error) {
+	environments := make(map[string]*runner.EnvironmentConfig)
+
+	// Helper to get or create environment config
+	getOrCreateEnv := func(envName string) *runner.EnvironmentConfig {
+		if environments[envName] == nil {
+			environments[envName] = &runner.EnvironmentConfig{
+				Vars:    make(map[string]string),
+				Secrets: make(map[string]string),
+			}
+		}
+		return environments[envName]
+	}
+
+	// Process --env-var flags
+	for _, flag := range input.envVar {
+		envName, kvPair, err := parseEnvironmentFlag(flag)
+		if err != nil {
+			return nil, err
+		}
+		key, value, err := parseKeyValue(kvPair)
+		if err != nil {
+			return nil, fmt.Errorf("invalid --env-var flag %s: %w", flag, err)
+		}
+		getOrCreateEnv(envName).Vars[key] = value
+	}
+
+	// Process --env-secret flags
+	for _, flag := range input.envSecret {
+		envName, kvPair, err := parseEnvironmentFlag(flag)
+		if err != nil {
+			return nil, err
+		}
+		key, value, err := parseKeyValue(kvPair)
+		if err != nil {
+			return nil, fmt.Errorf("invalid --env-secret flag %s: %w", flag, err)
+		}
+		getOrCreateEnv(envName).Secrets[strings.ToUpper(key)] = value
+	}
+
+	// Process --env-var-file flags
+	for _, flag := range input.envVarfile {
+		envName, filePath, err := parseEnvironmentFlag(flag)
+		if err != nil {
+			return nil, err
+		}
+		envConfig := getOrCreateEnv(envName)
+		if !readEnvs(filePath, envConfig.Vars) {
+			return nil, fmt.Errorf("failed to read --env-var-file %s", flag)
+		}
+	}
+
+	// Process --env-secret-file flags
+	for _, flag := range input.envSecretfile {
+		envName, filePath, err := parseEnvironmentFlag(flag)
+		if err != nil {
+			return nil, err
+		}
+		envConfig := getOrCreateEnv(envName)
+		if !readEnvsEx(filePath, envConfig.Secrets, true) {
+			return nil, fmt.Errorf("failed to read --env-secret-file %s", flag)
+		}
+	}
+
+	return environments, nil
+}
+
 //nolint:gocyclo
 func newRunCommand(ctx context.Context, input *Input) func(*cobra.Command, []string) error {
 	return func(cmd *cobra.Command, args []string) error {
@@ -602,6 +715,12 @@ func newRunCommand(ctx context.Context, input *Input) func(*cobra.Command, []str
 			log.Warnf(deprecationWarning, "container-cap-drop", fmt.Sprintf("--cap-drop=%s", input.containerCapDrop))
 		}
 
+		log.Debugf("Processing environment-specific flags")
+		environments, err := processEnvironmentFlags(input)
+		if err != nil {
+			return err
+		}
+
 		// run the plan
 		config := &runner.Config{
 			Actor:                              input.actor,
@@ -645,6 +764,7 @@ func newRunCommand(ctx context.Context, input *Input) func(*cobra.Command, []str
 			Matrix:                             matrixes,
 			ContainerNetworkMode:               docker_container.NetworkMode(input.networkName),
 			ConcurrentJobs:                     input.concurrentJobs,
+			Environments:                       environments,
 		}
 		if input.useNewActionCache || len(input.localRepository) > 0 {
 			if input.actionOfflineMode {
