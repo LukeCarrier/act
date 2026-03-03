@@ -269,5 +269,18 @@ func (runner *runnerImpl) newRunContext(ctx context.Context, run *model.Run, mat
 	rc.ExprEval = rc.NewExpressionEvaluator(ctx)
 	rc.Name = rc.ExprEval.Interpolate(ctx, run.String())
 
+	// Add environment-specific secrets to masks upfront
+	if !runner.config.InsecureSecrets && run.Job() != nil {
+		jobEnv := run.Job().GetEnvironment()
+		if jobEnv != nil && runner.config.Environments != nil {
+			envConfig := runner.config.Environments[jobEnv.Name]
+			if envConfig != nil {
+				for _, v := range envConfig.Secrets {
+					rc.Masks = append(rc.Masks, v)
+				}
+			}
+		}
+	}
+
 	return rc
 }
