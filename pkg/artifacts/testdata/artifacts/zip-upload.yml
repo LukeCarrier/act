@@ -1,0 +1,26 @@
+on:
+  push:
+
+jobs:
+  test-zip-upload:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Create test file
+        run: echo "Hello World" > test.txt
+
+      - name: Upload as zip (v4, default archive:true)
+        uses: actions/upload-artifact@v4
+        with:
+          name: my-zip-artifact
+          path: test.txt
+
+      - name: Download zip artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: my-zip-artifact
+          path: downloaded
+
+      - name: Verify downloaded file
+        run: |
+          [[ "$(cat downloaded/test.txt)" = "$(cat test.txt)" ]] || exit 1
+        shell: bash

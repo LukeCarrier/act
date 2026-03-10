@@ -1,0 +1,32 @@
+on:
+  push:
+
+jobs:
+  test-raw-upload:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Create test file
+        run: echo "Raw file content" > data.bin
+
+      - name: Upload as raw file (v7, archive:false)
+        uses: actions/upload-artifact@v7
+        with:
+          name: this-name-should-be-ignored
+          path: data.bin
+          archive: false
+
+      - name: Verify artifact is named after file, not name input
+        uses: actions/download-artifact@v8
+        with:
+          name: data.bin
+          path: downloaded
+
+      - name: Verify downloaded file (no decompression)
+        run: |
+          [[ "$(cat downloaded)" = "$(cat data.bin)" ]] || exit 1
+        shell: bash
+
+      - name: Verify it's not a zip
+        run: |
+          file downloaded | grep -q "ASCII text" || exit 1
+        shell: bash
