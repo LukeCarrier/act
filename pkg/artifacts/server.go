@@ -297,9 +297,17 @@ func Serve(ctx context.Context, artifactPath string, addr string, port string, n
 		logger.Fatal(err)
 	}
 
+	loggingHandler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		logger.Debugf("[artifact-server] %s %s %s Content-Length:%d", r.Method, r.URL.Path, r.Proto, r.ContentLength)
+		router.ServeHTTP(w, r)
+	})
+
 	server := &http.Server{
 		ReadHeaderTimeout: 2 * time.Second,
-		Handler:           router,
+		Handler:           loggingHandler,
+		ConnState: func(conn net.Conn, state http.ConnState) {
+			logger.Debugf("[artifact-server] conn %s -> %s state=%s", conn.RemoteAddr(), conn.LocalAddr(), state)
+		},
 	}
 
 	// run server
