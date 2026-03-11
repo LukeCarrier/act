@@ -11,6 +11,13 @@ import (
 	"unicode"
 )
 
+const (
+	// SlugHashLen is the length of the SHA256 hash prefix in a slug
+	SlugHashLen = 64
+	// SlugSuffixMaxLen is the maximum length of the human-readable suffix in a slug
+	SlugSuffixMaxLen = 32
+)
+
 // ArtifactMetadata stores artifact metadata in metadata.json
 type ArtifactMetadata struct {
 	ArtifactName      string `json:"artifact_name"`
@@ -40,8 +47,8 @@ func Slugify(input string) string {
 	}
 
 	// Truncate suffix to max 32 characters to keep paths reasonable
-	if len(suffix) > 32 {
-		suffix = suffix[:32]
+	if len(suffix) > SlugSuffixMaxLen {
+		suffix = suffix[:SlugSuffixMaxLen]
 	}
 
 	// If suffix is empty, use a default
