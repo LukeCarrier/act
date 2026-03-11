@@ -211,7 +211,7 @@ func (r artifactV4Routes) buildSignature(endp, expires, artifactName, filename s
 func (r artifactV4Routes) buildArtifactURL(endp, artifactName, filename string, taskID int64) string {
 	expires := time.Now().Add(60 * time.Minute).Format("2006-01-02 15:04:05.999999999 -0700 MST")
 	uploadURL := "http://" + strings.TrimSuffix(r.AppURL, "/") + strings.TrimSuffix(r.prefix, "/") +
-		"/" + endp + "?sig=" + base64.URLEncoding.EncodeToString(r.buildSignature(endp, expires, artifactName, filename, taskID)) + "&expires=" + url.QueryEscape(expires) + "&artifactName=" + url.QueryEscape(artifactName) + "&filename=" + url.QueryEscape(filename) + "&taskID=" + fmt.Sprint(taskID)
+		"/" + endp + "?sig=" + base64.RawURLEncoding.EncodeToString(r.buildSignature(endp, expires, artifactName, filename, taskID)) + "&expires=" + url.QueryEscape(expires) + "&artifactName=" + url.QueryEscape(artifactName) + "&filename=" + url.QueryEscape(filename) + "&taskID=" + fmt.Sprint(taskID)
 	return uploadURL
 }
 
@@ -221,12 +221,12 @@ func (r artifactV4Routes) verifySignature(ctx *ArtifactContext, endp string) (in
 	expires := ctx.Req.URL.Query().Get("expires")
 	artifactName := ctx.Req.URL.Query().Get("artifactName")
 	filename := ctx.Req.URL.Query().Get("filename")
-	dsig, _ := base64.URLEncoding.DecodeString(sig)
+	dsig, _ := base64.RawURLEncoding.DecodeString(sig)
 	taskID, _ := strconv.ParseInt(rawTaskID, 10, 64)
 
 	expectedsig := r.buildSignature(endp, expires, artifactName, filename, taskID)
 	if !hmac.Equal(dsig, expectedsig) {
-		log.Error("Error unauthorized")
+		log.Errorf("Error unauthorized: endp=%q artifactName=%q filename=%q taskID=%d expires=%q sig=%q url=%s", endp, artifactName, filename, taskID, expires, sig, ctx.Req.URL.String())
 		ctx.Error(http.StatusUnauthorized, "Error unauthorized")
 		return -1, "", "", false
 	}
@@ -310,7 +310,9 @@ func (r *artifactV4Routes) createArtifact(ctx *ArtifactContext) {
 	// Create placeholder file for upload
 	file, err := r.fs.OpenWritable(safeContentFile)
 	if err != nil {
-		panic(err)
+		log.Errorf("Failed to create artifact file: %v", err)
+		ctx.Error(http.StatusInternalServerError, "Failed to create artifact file")
+		return
 	}
 	file.Close()
 
@@ -441,9 +443,8 @@ func (r *artifactV4Routes) listArtifacts(ctx *ArtifactContext) {
 
 		// Read metadata from the artifact directory
 		safeArtifactPath := safeResolve(safePath, entry.Name())
-		safeMetadataPath := safeResolve(safeArtifactPath, "metadata.json")
 
-		metadata, err := ReadMetadata(safeMetadataPath)
+		metadata, err := ReadMetadata(safeArtifactPath)
 		if err != nil {
 			// Skip artifacts with missing or invalid metadata
 			log.Warnf("Skipping artifact with invalid metadata: %v", err)
@@ -498,7 +499,19 @@ func (r *artifactV4Routes) getSignedArtifactURL(ctx *ArtifactContext) {
 	}
 
 	artifactName := req.Name
-	filename := Slugify(artifactName + ".zip")
+
+	// Read metadata to determine the correct content filename
+	safeRunPath := safeResolve(r.baseDir, fmt.Sprint(runID))
+	safeArtifactPath := safeResolve(safeRunPath, Slugify(artifactName))
+
+	metadata, err := ReadMetadata(safeArtifactPath)
+	if err != nil {
+		log.Errorf("Failed to read artifact metadata: %v", err)
+		ctx.Error(http.StatusInternalServerError, "Failed to read artifact metadata")
+		return
+	}
+
+	filename := Slugify(metadata.OriginalFilename)
 
 	respData := GetSignedArtifactURLResponse{}
 
@@ -515,10 +528,9 @@ func (r *artifactV4Routes) downloadArtifact(ctx *ArtifactContext) {
 	safeRunPath := safeResolve(r.baseDir, fmt.Sprint(task))
 	slugifiedArtifactName := Slugify(artifactName)
 	safeArtifactPath := safeResolve(safeRunPath, slugifiedArtifactName)
-	safeMetadataPath := safeResolve(safeArtifactPath, "metadata.json")
 
 	// Read metadata to get MIME type and original name
-	metadata, err := ReadMetadata(safeMetadataPath)
+	metadata, err := ReadMetadata(safeArtifactPath)
 	if err != nil {
 		log.Errorf("Failed to read artifact metadata: %v", err)
 		ctx.Error(http.StatusInternalServerError, "Failed to read artifact metadata")

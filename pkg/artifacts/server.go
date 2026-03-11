@@ -291,10 +291,23 @@ func Serve(ctx context.Context, artifactPath string, addr string, port string) c
 	downloads(router, artifactPath, fsys)
 	RoutesV4(router, artifactPath, fsys, fsys)
 
+	listener, err := net.Listen(network, fmt.Sprintf("%s:%s", addr, port))
+	if err != nil {
+		logger.Fatal(err)
+	}
+
+	loggingHandler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		logger.Debugf("[artifact-server] %s %s %s Content-Length:%d", r.Method, r.URL.Path, r.Proto, r.ContentLength)
+		router.ServeHTTP(w, r)
+	})
+
 	server := &http.Server{
 		Addr:              fmt.Sprintf("%s:%s", addr, port),
 		ReadHeaderTimeout: 2 * time.Second,
-		Handler:           router,
+		Handler:           loggingHandler,
+		ConnState: func(conn net.Conn, state http.ConnState) {
+			logger.Debugf("[artifact-server] conn %s -> %s state=%s", conn.RemoteAddr(), conn.LocalAddr(), state)
+		},
 	}
 
 	// run server
